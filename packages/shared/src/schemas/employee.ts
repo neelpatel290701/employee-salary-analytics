@@ -131,3 +131,93 @@ export const employmentTypeSchema = z.enum([
 ]);
 
 export type EmploymentType = z.infer<typeof employmentTypeSchema>;
+
+// ===========================================================================
+// Composed schemas
+// ===========================================================================
+//
+// The three shapes the API contracts in docs/05-api-design.md §5 commit to:
+//
+//   createEmployeeInputSchema  - POST /api/employees body
+//   updateEmployeeInputSchema  - PATCH /api/employees/:id body
+//   employeeSchema             - the resource shape returned by GET endpoints
+//
+// All three use .strict() so unknown fields produce a VALIDATION_FAILED
+// error rather than being silently dropped (docs/05-api-design.md §1
+// principle 5: "no magic").
+
+// --- createEmployeeInputSchema --------------------------------------------
+// employmentType has a default of FULL_TIME because the brief's persona
+// (HR Manager) deals overwhelmingly in full-time hires - making the field
+// optional on input with a sensible default speeds the most common write
+// (Journey 1 in docs/02-product-thinking.md §3).
+export const createEmployeeInputSchema = z
+  .object({
+    email: emailSchema,
+    fullName: fullNameSchema,
+    jobTitle: jobTitleSchema,
+    country: countrySchema,
+    department: departmentSchema,
+    salary: salarySchema,
+    employmentType: employmentTypeSchema.default('FULL_TIME'),
+    hireDate: hireDateSchema,
+  })
+  .strict();
+
+export type CreateEmployeeInput = z.infer<typeof createEmployeeInputSchema>;
+
+// --- updateEmployeeInputSchema --------------------------------------------
+// Every field is truly optional here - PATCH semantics, "only change the
+// fields I provide." Empty bodies are rejected by an object-level refine
+// because a no-op PATCH is almost always a bug.
+//
+// Order matters in the chain: .strict() must precede .refine(). Calling
+// .strict() on a ZodEffects returned by .refine() would not propagate the
+// strict-keys check; the order below ensures unknown fields raise the
+// VALIDATION_FAILED error before the "at least one field" refine runs.
+export const updateEmployeeInputSchema = z
+  .object({
+    email: emailSchema.optional(),
+    fullName: fullNameSchema.optional(),
+    jobTitle: jobTitleSchema.optional(),
+    country: countrySchema.optional(),
+    department: departmentSchema.optional(),
+    salary: salarySchema.optional(),
+    employmentType: employmentTypeSchema.optional(),
+    hireDate: hireDateSchema.optional(),
+  })
+  .strict()
+  .refine((obj) => Object.keys(obj).length > 0, {
+    message: 'At least one field is required',
+  });
+
+export type UpdateEmployeeInput = z.infer<typeof updateEmployeeInputSchema>;
+
+// --- employeeSchema --------------------------------------------------------
+// The shape returned by GET endpoints and round-tripped through the wire.
+// id is intentionally validated as a non-empty string rather than against
+// a CUID-specific regex: the format is owned by Prisma's @default(cuid()),
+// not by us, and constraining it here would only break the day Prisma
+// changes its default. createdAt/updatedAt are ISO 8601 strings with a
+// time component - date-only "2026-05-29" is rejected.
+export const employeeSchema = z
+  .object({
+    id: z.string().min(1, { message: 'id is required' }),
+    email: emailSchema,
+    fullName: fullNameSchema,
+    jobTitle: jobTitleSchema,
+    country: countrySchema,
+    department: departmentSchema,
+    salary: salarySchema,
+    employmentType: employmentTypeSchema,
+    hireDate: hireDateSchema,
+    createdAt: z
+      .string()
+      .datetime({ message: 'createdAt must be an ISO 8601 datetime' }),
+    updatedAt: z
+      .string()
+      .datetime({ message: 'updatedAt must be an ISO 8601 datetime' }),
+  })
+  .strict();
+
+export type Employee = z.infer<typeof employeeSchema>;
