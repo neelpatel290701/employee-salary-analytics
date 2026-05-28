@@ -1,15 +1,42 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import type { ZodIssue } from 'zod';
 
 import {
   countrySchema,
+  createEmployeeInputSchema,
   departmentSchema,
   emailSchema,
+  employeeSchema,
   employmentTypeSchema,
   fullNameSchema,
   hireDateSchema,
   jobTitleSchema,
   salarySchema,
+  updateEmployeeInputSchema,
 } from '../../src/schemas/employee';
+
+// Shared test fixtures. Kept inline here (rather than in a builders module)
+// because the @app/shared package has only one entity at this stage. If
+// fixtures grow or are needed in multiple test files, they will be lifted
+// into tests/_support/.
+
+const validCreateInput = {
+  email: 'priya@example.com',
+  fullName: 'Priya Ramaswamy',
+  jobTitle: 'Senior Software Engineer',
+  country: 'IN',
+  department: 'ENGINEERING',
+  salary: '145000.00',
+  employmentType: 'FULL_TIME',
+  hireDate: '2022-03-14',
+} as const;
+
+const validEmployee = {
+  ...validCreateInput,
+  id: 'clw1234567890abcdefghijkl',
+  createdAt: '2026-05-29T08:31:12.413Z',
+  updatedAt: '2026-05-29T08:31:12.413Z',
+} as const;
 
 // Field-level schemas for the Employee entity. The canonical rules are listed
 // in docs/05-api-design.md §7; this file is the executable form of that
@@ -244,5 +271,180 @@ describe('employmentTypeSchema', () => {
 
   it('is case-sensitive (rejects lowercase)', () => {
     expect(() => employmentTypeSchema.parse('full_time')).toThrow();
+  });
+});
+
+// Composed schemas: the create-body, update-body, and full-Employee response
+// shapes the API contracts in docs/05-api-design.md §5 commit to.
+
+describe('createEmployeeInputSchema', () => {
+  it('accepts a fully valid input', () => {
+    const result = createEmployeeInputSchema.parse(validCreateInput);
+    expect(result).toEqual(validCreateInput);
+  });
+
+  it('defaults employmentType to FULL_TIME when omitted', () => {
+    const { employmentType: _omit, ...withoutEmploymentType } = validCreateInput;
+    const result = createEmployeeInputSchema.parse(withoutEmploymentType);
+    expect(result.employmentType).toBe('FULL_TIME');
+  });
+
+  it('normalises email to lowercase and country to uppercase', () => {
+    const result = createEmployeeInputSchema.parse({
+      ...validCreateInput,
+      email: 'Priya@Example.com',
+      country: 'in',
+    });
+    expect(result.email).toBe('priya@example.com');
+    expect(result.country).toBe('IN');
+  });
+
+  it('trims whitespace from fullName and jobTitle', () => {
+    const result = createEmployeeInputSchema.parse({
+      ...validCreateInput,
+      fullName: '  Priya  ',
+      jobTitle: '  Engineer  ',
+    });
+    expect(result.fullName).toBe('Priya');
+    expect(result.jobTitle).toBe('Engineer');
+  });
+
+  it('rejects when a required field is missing', () => {
+    const { email: _omit, ...withoutEmail } = validCreateInput;
+    // Using safeParse + .success rather than expect(() => ...).toThrow() so a
+    // TypeError thrown by `undefined.parse(...)` in a red state cannot
+    // satisfy the assertion. This pattern repeats throughout the file.
+    expect(createEmployeeInputSchema.safeParse(withoutEmail).success).toBe(false);
+  });
+
+  it('rejects unknown fields (strict mode)', () => {
+    expect(
+      createEmployeeInputSchema.safeParse({
+        ...validCreateInput,
+        unexpectedField: 'value',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('propagates field-level errors with the right path', () => {
+    const result = createEmployeeInputSchema.safeParse({
+      ...validCreateInput,
+      salary: '-100',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual(['salary']);
+    }
+  });
+
+  it('reports all failing fields rather than stopping at the first', () => {
+    const result = createEmployeeInputSchema.safeParse({
+      ...validCreateInput,
+      salary: '-100',
+      country: 'ZZ',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i: ZodIssue) => i.path[0]);
+      expect(paths).toContain('salary');
+      expect(paths).toContain('country');
+    }
+  });
+});
+
+describe('updateEmployeeInputSchema', () => {
+  it('accepts a partial body with a single field', () => {
+    const result = updateEmployeeInputSchema.parse({ salary: '150000.00' });
+    expect(result).toEqual({ salary: '150000.00' });
+  });
+
+  it('accepts a partial body with multiple fields', () => {
+    const result = updateEmployeeInputSchema.parse({
+      fullName: 'New Name',
+      department: 'DESIGN',
+    });
+    expect(result).toEqual({ fullName: 'New Name', department: 'DESIGN' });
+  });
+
+  it('rejects an empty body (at least one field required)', () => {
+    expect(updateEmployeeInputSchema.safeParse({}).success).toBe(false);
+  });
+
+  it('still validates each field that is provided', () => {
+    expect(updateEmployeeInputSchema.safeParse({ salary: '-100' }).success).toBe(
+      false,
+    );
+    expect(updateEmployeeInputSchema.safeParse({ country: 'ZZ' }).success).toBe(
+      false,
+    );
+  });
+
+  it('rejects unknown fields', () => {
+    expect(
+      updateEmployeeInputSchema.safeParse({ unexpectedField: 'value' }).success,
+    ).toBe(false);
+  });
+
+  it('normalises fields the same way the create schema does', () => {
+    const result = updateEmployeeInputSchema.parse({
+      email: 'NewEmail@Example.com',
+      country: 'us',
+    });
+    expect(result.email).toBe('newemail@example.com');
+    expect(result.country).toBe('US');
+  });
+
+  it('does not default employmentType (the field is truly optional here)', () => {
+    const result = updateEmployeeInputSchema.parse({ fullName: 'New' });
+    expect(result).not.toHaveProperty('employmentType');
+  });
+});
+
+describe('employeeSchema', () => {
+  it('accepts a fully-shaped employee', () => {
+    const result = employeeSchema.parse(validEmployee);
+    expect(result).toEqual(validEmployee);
+  });
+
+  it('requires id', () => {
+    const { id: _omit, ...withoutId } = validEmployee;
+    expect(employeeSchema.safeParse(withoutId).success).toBe(false);
+  });
+
+  it('requires createdAt', () => {
+    const { createdAt: _omit, ...withoutCreatedAt } = validEmployee;
+    expect(employeeSchema.safeParse(withoutCreatedAt).success).toBe(false);
+  });
+
+  it('requires updatedAt', () => {
+    const { updatedAt: _omit, ...withoutUpdatedAt } = validEmployee;
+    expect(employeeSchema.safeParse(withoutUpdatedAt).success).toBe(false);
+  });
+
+  it('rejects an empty string id', () => {
+    expect(employeeSchema.safeParse({ ...validEmployee, id: '' }).success).toBe(
+      false,
+    );
+  });
+
+  it('rejects malformed createdAt timestamps', () => {
+    expect(
+      employeeSchema.safeParse({ ...validEmployee, createdAt: 'not-a-date' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects malformed updatedAt timestamps', () => {
+    expect(
+      employeeSchema.safeParse({ ...validEmployee, updatedAt: '2026-05-29' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects unknown fields (strict mode)', () => {
+    expect(
+      employeeSchema.safeParse({ ...validEmployee, unexpectedField: 'value' })
+        .success,
+    ).toBe(false);
   });
 });
