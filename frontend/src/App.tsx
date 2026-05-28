@@ -1,6 +1,6 @@
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 
-import { EmployeesPage } from './routes/EmployeesPage';
+import { EmployeesPage } from './features/employees/EmployeesPage';
 import { InsightsPage } from './routes/InsightsPage';
 
 // Two-tab layout per docs/02-product-thinking.md §5 - the "doing" surface
