@@ -12,7 +12,13 @@ services:
       MYSQL_USER: app
       MYSQL_PASSWORD: app
     ports:
-      - "3306:3306"
+      # Host port 3307 (not 3306) because the standard MySQL port is the
+      # most commonly-conflicting one on developer laptops - it's the
+      # default for any system-installed MySQL and for many other
+      # docker-compose stacks. 3307 is a defensive choice that keeps
+      # this project's `docker compose up -d` working out of the box
+      # regardless of what else the developer has running.
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
