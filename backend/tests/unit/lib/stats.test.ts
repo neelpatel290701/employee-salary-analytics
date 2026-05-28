@@ -185,8 +185,11 @@ describe('stddev()', () => {
     //   squared     = [4e8, 1e8, 0, 1e8, 4e8] = 1e9
     //   variance    = 1e9 / 5 = 2e8
     //   stddev      = sqrt(2e8) ≈ 14142.135623...
+    // 14142.14 (rounded up), not 14142.13 - the exact value 14142.1356
+    // is 0.0056 above 14142.13 which exceeds toBeCloseTo(..., 2)'s
+    // tolerance of 0.005. Caught while implementing in the next commit.
     expect(
       stddev([50000, 60000, 70000, 80000, 90000], 70000),
-    ).toBeCloseTo(14142.13, 2);
+    ).toBeCloseTo(14142.14, 2);
   });
 });
