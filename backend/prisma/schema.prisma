@@ -1,16 +1,69 @@
 // Prisma schema for the salary-management backend.
 //
-// This file deliberately starts with only a datasource and a generator. The
-// `Employee` model and its enums (Department, EmploymentType) - whose shapes
-// are pinned down in docs/04-data-model.md §3 - arrive in the next commit
-// pair under the TDD discipline: a failing test referencing the model, then
-// the migration that creates it.
+// The Employee model and its supporting enums are the canonical translation
+// of docs/04-data-model.md §3 into Prisma syntax. Field types, defaults,
+// indexes, and the @@map table name are all documented there with a
+// reasoning sentence per choice; see in particular §2.1 (field rationale)
+// and §4 (index defence).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  // Pre-created shadow database used by `prisma migrate dev` for drift
+  // detection. Provisioning it ourselves (via docker/mysql/init) means the
+  // app user can keep narrow per-database privileges rather than needing
+  // global CREATE/DROP. See docs/10-deployment.md §6 and the init script.
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model Employee {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  fullName       String         @db.VarChar(200)
+  jobTitle       String         @db.VarChar(100)
+  country        String         @db.Char(2)
+  department     Department
+  salary         Decimal        @db.Decimal(12, 2)
+  employmentType EmploymentType @default(FULL_TIME)
+  hireDate       DateTime       @db.Date
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Indexes earn their place against the queries each one serves.
+  // The defence for each is in docs/04-data-model.md §4. We do not
+  // index speculatively.
+  @@index([country])
+  @@index([country, jobTitle])
+  @@index([country, department])
+  @@map("employees")
+}
+
+// Controlled vocabulary for department. Adding a value is a migration -
+// the right amount of friction for an analytical pivot. See tradeoff 4.4
+// in docs/08-tradeoffs.md.
+enum Department {
+  ENGINEERING
+  PRODUCT
+  DESIGN
+  SALES
+  MARKETING
+  CUSTOMER_SUPPORT
+  FINANCE
+  HR
+  OPERATIONS
+  LEGAL
+  OTHER
+}
+
+// Employment type segments the analytics: a contractor's day-rate and a
+// full-time salary are not the same shape of money.
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
 }
