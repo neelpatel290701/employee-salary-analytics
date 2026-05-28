@@ -11,6 +11,6 @@
 
 process.env.NODE_ENV ??= 'test';
 process.env.DATABASE_URL ??=
-  'mysql://app:app@localhost:3306/employee_analytics_test';
+  'mysql://app:app@localhost:3307/employee_analytics_test';
 process.env.ALLOWED_ORIGINS ??= 'http://localhost:5173';
 process.env.LOG_LEVEL ??= 'silent';
