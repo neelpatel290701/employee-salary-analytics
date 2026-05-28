@@ -330,3 +330,127 @@ export type CountryStats = {
   p75Salary: string;
   totalPayrollUsd: string;
 };
+
+// ===========================================================================
+// Insights: job-title-stats schemas
+// ===========================================================================
+// Contract: docs/05-api-design.md §6.3. `country` is required - the brief's
+// F8 commits to "avg salary for the given Job Title in a country."
+
+export const jobTitleStatsSortBySchema = z.enum([
+  'count',
+  'averageSalary',
+  'medianSalary',
+]);
+
+export type JobTitleStatsSortBy = z.infer<typeof jobTitleStatsSortBySchema>;
+
+export const jobTitleStatsQuerySchema = z
+  .object({
+    country: countrySchema,
+    jobTitle: z.string().trim().min(1).max(100).optional(),
+    sortBy: jobTitleStatsSortBySchema.default('count'),
+    sortOrder: sortOrderSchema.default('desc'),
+  })
+  .strict();
+
+export type JobTitleStatsQuery = z.infer<typeof jobTitleStatsQuerySchema>;
+
+export type JobTitleStats = {
+  country: string;
+  jobTitle: string;
+  count: number;
+  averageSalary: string;
+  medianSalary: string;
+  p25Salary: string;
+  p75Salary: string;
+};
+
+// ===========================================================================
+// Insights: headcount schemas
+// ===========================================================================
+// Contract: docs/05-api-design.md §6.4.
+
+export const headcountGroupBySchema = z.enum(['country', 'country_department']);
+export type HeadcountGroupBy = z.infer<typeof headcountGroupBySchema>;
+
+export const headcountQuerySchema = z
+  .object({
+    groupBy: headcountGroupBySchema.default('country'),
+  })
+  .strict();
+
+export type HeadcountQuery = z.infer<typeof headcountQuerySchema>;
+
+export type HeadcountByCountry = { country: string; count: number };
+export type HeadcountByCountryDepartment = {
+  country: string;
+  department: Department;
+  count: number;
+};
+
+// ===========================================================================
+// Insights: summary response shape
+// ===========================================================================
+// Contract: docs/05-api-design.md §6.1. No query parameters.
+
+export type InsightsSummary = {
+  totalHeadcount: number;
+  totalAnnualPayrollUsd: string;
+  averageTenureYears: number;
+  countryCount: number;
+  jobTitleCount: number;
+  departmentBreakdown: { department: Department; count: number }[];
+};
+
+// ===========================================================================
+// Insights: outliers schemas
+// ===========================================================================
+// Contract: docs/05-api-design.md §6.5.
+
+export const outliersDirectionSchema = z.enum(['above', 'below', 'both']);
+export type OutliersDirection = z.infer<typeof outliersDirectionSchema>;
+
+export const outliersQuerySchema = z
+  .object({
+    country: countrySchema.optional(),
+    direction: outliersDirectionSchema.default('both'),
+    limit: z.coerce.number().int().min(1).max(200).default(50),
+  })
+  .strict();
+
+export type OutliersQuery = z.infer<typeof outliersQuerySchema>;
+
+export type Outlier = {
+  employee: {
+    id: string;
+    fullName: string;
+    jobTitle: string;
+    country: string;
+  };
+  salary: string;
+  cohortMean: string;
+  cohortStdDev: string;
+  deviationsFromMean: number;
+  direction: 'above' | 'below';
+};
+
+// ===========================================================================
+// Job-titles autocomplete
+// ===========================================================================
+// Contract: docs/05-api-design.md §5.6. Not under /api/insights because it
+// is a form-support utility, not a metric.
+
+export const jobTitlesQuerySchema = z
+  .object({
+    search: z.string().trim().min(1).max(100).optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(10),
+  })
+  .strict();
+
+export type JobTitlesQuery = z.infer<typeof jobTitlesQuerySchema>;
+
+export type JobTitleCount = {
+  jobTitle: string;
+  count: number;
+};

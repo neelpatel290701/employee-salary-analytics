@@ -9,6 +9,7 @@ import { notFound } from './middleware/notFound.js';
 import { employeesRouter } from './routes/employees.js';
 import { healthRouter } from './routes/health.js';
 import { insightsRouter } from './routes/insights.js';
+import { jobTitlesRouter } from './routes/job-titles.js';
 
 // The Express app is exported as a value (not a side-effect of listening) so
 // integration tests can mount it on a Supertest agent without binding a port.
@@ -39,6 +40,7 @@ export const createApp = () => {
   app.use('/api/health', healthRouter);
   app.use('/api/employees', employeesRouter);
   app.use('/api/insights', insightsRouter);
+  app.use('/api/job-titles', jobTitlesRouter);
 
   // Tail middleware: 404 for unmatched paths, then the single error handler.
   // Order matters - errorHandler must come last.
