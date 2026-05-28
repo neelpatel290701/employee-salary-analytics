@@ -1,0 +1,16 @@
+// Prisma schema for the salary-management backend.
+//
+// This file deliberately starts with only a datasource and a generator. The
+// `Employee` model and its enums (Department, EmploymentType) - whose shapes
+// are pinned down in docs/04-data-model.md §3 - arrive in the next commit
+// pair under the TDD discipline: a failing test referencing the model, then
+// the migration that creates it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
