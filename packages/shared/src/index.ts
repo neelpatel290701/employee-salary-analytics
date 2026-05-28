@@ -1,12 +1,9 @@
-// @app/shared — single source of truth for zod schemas, inferred TypeScript
-// types, and small pure helpers that both the backend and the frontend
-// consume.
+// @app/shared - the single source of truth for zod schemas, inferred
+// TypeScript types, and small pure helpers shared between backend and
+// frontend.
 //
-// The schemas, types, and helpers themselves are added one at a time during
-// the TDD implementation phase, with a failing test landing before any
-// schema is created. See docs/06-tdd-strategy.md §6 for the cadence.
-//
-// This file deliberately starts empty so the workspace can resolve before
-// any production code exists.
+// Per docs/06-tdd-strategy.md §6, exports here grow one commit pair at a
+// time as new schemas land under the TDD discipline.
 
-export {};
+export * from './schemas/employee.js';
+export * from './data/iso-countries.js';
