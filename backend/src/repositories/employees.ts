@@ -18,6 +18,17 @@ export class EmployeeEmailConflictError extends Error {
   }
 }
 
+// Look up a single employee by id. Returns null when the id does not
+// resolve to a row - callers translate that into a 404 at their layer.
+// findUnique is parameterised, so the id can be any opaque string from
+// the URL without SQL-injection risk; an unparsable or impossibly-long
+// value still just returns null.
+export const findEmployeeById = async (
+  id: string,
+): Promise<EmployeeRow | null> => {
+  return prisma.employee.findUnique({ where: { id } });
+};
+
 // Insert a new employee row. The input arrives already validated and
 // normalised by createEmployeeInputSchema in the route layer, so this
 // function does not re-validate. hireDate is converted from a YYYY-MM-DD

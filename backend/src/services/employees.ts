@@ -1,8 +1,9 @@
-import type { CreateEmployeeInput, Employee } from '@app/shared';
+import type { CreateEmployeeInput, Employee, ISOCountryCode } from '@app/shared';
 
 import { HttpError } from '../errors.js';
 import {
   EmployeeEmailConflictError,
+  findEmployeeById,
   insertEmployee,
   type EmployeeRow,
 } from '../repositories/employees.js';
@@ -31,6 +32,14 @@ export const create = async (input: CreateEmployeeInput): Promise<Employee> => {
   }
 };
 
+export const getById = async (id: string): Promise<Employee> => {
+  const row = await findEmployeeById(id);
+  if (!row) {
+    throw new HttpError(404, 'NOT_FOUND', 'Employee not found');
+  }
+  return serializeEmployee(row);
+};
+
 // Convert a Prisma `Employee` row into the API contract shape from
 // docs/05-api-design.md §5.1.
 //
@@ -48,7 +57,12 @@ const serializeEmployee = (row: EmployeeRow): Employee => ({
   email: row.email,
   fullName: row.fullName,
   jobTitle: row.jobTitle,
-  country: row.country,
+  // The DB column is a plain CHAR(2) so Prisma types it as `string`, but
+  // the API contract guarantees an ISO 3166-1 alpha-2 code because we
+  // validate via countrySchema on every write. The cast acknowledges that
+  // runtime invariant; an invalid code can only enter the table via a
+  // hand-written SQL statement that bypasses the schema.
+  country: row.country as ISOCountryCode,
   department: row.department,
   salary: row.salary.toFixed(2),
   employmentType: row.employmentType,

@@ -27,3 +27,16 @@ employeesRouter.post('/', async (req, res, next) => {
     next(err);
   }
 });
+
+// GET /api/employees/:id - read single
+// Contract: docs/05-api-design.md §5.3. The :id segment is treated as an
+// opaque key - any value that does not resolve to a row is a 404 with
+// "Employee not found", never a 400 or 422.
+employeesRouter.get('/:id', async (req, res, next) => {
+  try {
+    const employee = await employeesService.getById(req.params.id);
+    res.json({ data: employee });
+  } catch (err) {
+    next(err);
+  }
+});
