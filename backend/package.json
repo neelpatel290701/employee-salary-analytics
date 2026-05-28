@@ -10,6 +10,7 @@
     "build": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "seed": "tsx prisma/seed.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
