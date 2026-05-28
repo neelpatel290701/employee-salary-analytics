@@ -46,3 +46,43 @@ export const listEmployees = (
     `/api/employees${toQueryString(params)}`,
   );
 };
+
+// Mutation client functions. Each returns the wrapped response shape from
+// the backend (or void for DELETE) so the calling useMutation can stay
+// strongly typed all the way through.
+
+export type CreateEmployeeBody = {
+  email: string;
+  fullName: string;
+  jobTitle: string;
+  country: string;
+  department: string;
+  salary: string;
+  employmentType?: string;
+  hireDate: string;
+};
+
+export type UpdateEmployeeBody = Partial<CreateEmployeeBody>;
+
+export const createEmployee = (
+  body: CreateEmployeeBody,
+): Promise<{ data: Employee }> => {
+  return apiRequest<{ data: Employee }>('/api/employees', {
+    method: 'POST',
+    body,
+  });
+};
+
+export const updateEmployee = (
+  id: string,
+  body: UpdateEmployeeBody,
+): Promise<{ data: Employee }> => {
+  return apiRequest<{ data: Employee }>(`/api/employees/${id}`, {
+    method: 'PATCH',
+    body,
+  });
+};
+
+export const deleteEmployee = (id: string): Promise<void> => {
+  return apiRequest<void>(`/api/employees/${id}`, { method: 'DELETE' });
+};
