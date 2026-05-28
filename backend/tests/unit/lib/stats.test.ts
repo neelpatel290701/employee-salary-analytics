@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { percentile } from '../../../src/lib/stats.js';
+import { percentile, stddev, summarize } from '../../../src/lib/stats.js';
 
 // Unit tests for the percentile() primitive. Pure function, no I/O.
 //
@@ -72,5 +72,121 @@ describe('percentile()', () => {
     expect(percentile([50000, 75000, 100000, 125000, 150000], 0.5)).toBe(100000);
     expect(percentile([50000, 75000, 100000, 125000, 150000], 0.25)).toBe(75000);
     expect(percentile([50000, 75000, 100000, 125000, 150000], 0.75)).toBe(125000);
+  });
+});
+
+describe('summarize()', () => {
+  it('returns all statistics for a typical input', () => {
+    // [10, 20, 30, 40, 50]:
+    //   count = 5
+    //   min   = 10, max = 50
+    //   mean  = (10+20+30+40+50)/5 = 150/5 = 30
+    //   p50   = sorted[4*0.5=2] = 30
+    //   p25   = sorted[4*0.25=1] = 20
+    //   p75   = sorted[4*0.75=3] = 40
+    expect(summarize([10, 20, 30, 40, 50])).toEqual({
+      count: 5,
+      min: 10,
+      max: 50,
+      mean: 30,
+      median: 30,
+      p25: 20,
+      p75: 40,
+    });
+  });
+
+  it('returns null statistics for an empty input', () => {
+    expect(summarize([])).toEqual({
+      count: 0,
+      min: null,
+      max: null,
+      mean: null,
+      median: null,
+      p25: null,
+      p75: null,
+    });
+  });
+
+  it('handles a single value (every aggregate is the value)', () => {
+    expect(summarize([42])).toEqual({
+      count: 1,
+      min: 42,
+      max: 42,
+      mean: 42,
+      median: 42,
+      p25: 42,
+      p75: 42,
+    });
+  });
+
+  it('sorts the input internally so unsorted input still gives correct stats', () => {
+    // Same values as the typical-input test but scrambled. Sorting once
+    // inside summarize() means callers can pass salaries straight from
+    // the DB without pre-sorting.
+    expect(summarize([50, 30, 10, 20, 40])).toEqual({
+      count: 5,
+      min: 10,
+      max: 50,
+      mean: 30,
+      median: 30,
+      p25: 20,
+      p75: 40,
+    });
+  });
+
+  it('does not mutate the input array', () => {
+    // Defensive sort inside summarize() must not change the caller's
+    // array. Callers may be iterating over the same array elsewhere.
+    const input = [50, 30, 10, 20, 40];
+    summarize(input);
+    expect(input).toEqual([50, 30, 10, 20, 40]);
+  });
+
+  it('handles a realistic salary fixture', () => {
+    // [50000, 60000, 70000, 80000, 90000]:
+    //   count = 5, min = 50000, max = 90000
+    //   mean  = 350000 / 5 = 70000
+    //   p50   = 70000, p25 = 60000, p75 = 80000
+    expect(summarize([50000, 60000, 70000, 80000, 90000])).toEqual({
+      count: 5,
+      min: 50000,
+      max: 90000,
+      mean: 70000,
+      median: 70000,
+      p25: 60000,
+      p75: 80000,
+    });
+  });
+});
+
+describe('stddev()', () => {
+  it('computes population standard deviation correctly', () => {
+    // Classic textbook fixture: [2, 4, 4, 4, 5, 5, 7, 9]
+    //   mean        = 40 / 8 = 5
+    //   deviations  = [-3, -1, -1, -1, 0, 0, 2, 4]
+    //   squared     = [9, 1, 1, 1, 0, 0, 4, 16] = 32
+    //   variance    = 32 / 8 = 4   (population, divide by N, not N-1)
+    //   stddev      = sqrt(4) = 2
+    expect(stddev([2, 4, 4, 4, 5, 5, 7, 9], 5)).toBe(2);
+  });
+
+  it('returns 0 for a single value (a single point has no deviation)', () => {
+    expect(stddev([5], 5)).toBe(0);
+  });
+
+  it('returns null for empty input', () => {
+    expect(stddev([], 0)).toBeNull();
+  });
+
+  it('handles a realistic salary fixture', () => {
+    // [50000, 60000, 70000, 80000, 90000]:
+    //   mean        = 70000 (precomputed by summarize)
+    //   deviations  = [-20000, -10000, 0, 10000, 20000]
+    //   squared     = [4e8, 1e8, 0, 1e8, 4e8] = 1e9
+    //   variance    = 1e9 / 5 = 2e8
+    //   stddev      = sqrt(2e8) ≈ 14142.135623...
+    expect(
+      stddev([50000, 60000, 70000, 80000, 90000], 70000),
+    ).toBeCloseTo(14142.13, 2);
   });
 });
