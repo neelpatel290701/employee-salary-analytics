@@ -1,6 +1,9 @@
 import { Router } from 'express';
 
-import { createEmployeeInputSchema } from '@app/shared';
+import {
+  createEmployeeInputSchema,
+  listEmployeesQuerySchema,
+} from '@app/shared';
 
 import * as employeesService from '../services/employees.js';
 
@@ -11,6 +14,18 @@ import * as employeesService from '../services/employees.js';
 // (docs/03-architecture.md §3.2).
 
 export const employeesRouter = Router();
+
+// GET /api/employees - paginated, filterable, searchable, sortable list
+// Contract: docs/05-api-design.md §5.1.
+employeesRouter.get('/', async (req, res, next) => {
+  try {
+    const query = listEmployeesQuerySchema.parse(req.query);
+    const result = await employeesService.list(query);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // POST /api/employees - create
 // Contract: docs/05-api-design.md §5.2.

@@ -1,5 +1,5 @@
 import { Prisma, type Employee as EmployeeRow } from '@prisma/client';
-import type { CreateEmployeeInput } from '@app/shared';
+import type { CreateEmployeeInput, ListEmployeesQuery } from '@app/shared';
 
 import { prisma } from '../db/prisma.js';
 
@@ -27,6 +27,71 @@ export const findEmployeeById = async (
   id: string,
 ): Promise<EmployeeRow | null> => {
   return prisma.employee.findUnique({ where: { id } });
+};
+
+// Translate a validated list query into a Prisma WHERE clause. The query
+// arrives already validated by listEmployeesQuerySchema, so this function
+// is total - every branch is reachable, no defensive null checks.
+//
+// One MySQL-specific note: Prisma's `mode: 'insensitive'` flag for string
+// filters is Postgres/MongoDB-only. We rely on MySQL's case-insensitive
+// collation (utf8mb4_unicode_ci on every text column) to provide the
+// case-insensitive match contracted in docs/05-api-design.md §2.6, so the
+// plain `contains` and equality filters below are case-insensitive by
+// virtue of the column collation alone.
+const buildWhere = (query: ListEmployeesQuery): Prisma.EmployeeWhereInput => {
+  const where: Prisma.EmployeeWhereInput = {};
+
+  if (query.country) where.country = query.country;
+  if (query.jobTitle) where.jobTitle = query.jobTitle;
+  if (query.department) where.department = query.department;
+  if (query.employmentType) where.employmentType = query.employmentType;
+
+  if (query.minSalary !== undefined || query.maxSalary !== undefined) {
+    const salaryFilter: Prisma.DecimalFilter = {};
+    if (query.minSalary !== undefined) salaryFilter.gte = query.minSalary;
+    if (query.maxSalary !== undefined) salaryFilter.lte = query.maxSalary;
+    where.salary = salaryFilter;
+  }
+
+  if (query.search) {
+    where.OR = [
+      { fullName: { contains: query.search } },
+      { email: { contains: query.search } },
+    ];
+  }
+
+  return where;
+};
+
+// Build the ORDER BY clause from the validated query. The id tiebreaker
+// makes the sort stable - two rows that tie on the primary sort key keep
+// a deterministic order, which keeps pagination deterministic too
+// (docs/05-api-design.md §2.7).
+const buildOrderBy = (
+  query: ListEmployeesQuery,
+): Prisma.EmployeeOrderByWithRelationInput[] => [
+  { [query.sortBy]: query.sortOrder },
+  { id: query.sortOrder },
+];
+
+// List employees matching the query, plus the total count of matching rows
+// (regardless of pagination). Both queries share the same WHERE clause and
+// are issued in parallel.
+export const findManyEmployees = async (
+  query: ListEmployeesQuery,
+): Promise<{ rows: EmployeeRow[]; total: number }> => {
+  const where = buildWhere(query);
+  const orderBy = buildOrderBy(query);
+  const skip = (query.page - 1) * query.pageSize;
+  const take = query.pageSize;
+
+  const [rows, total] = await Promise.all([
+    prisma.employee.findMany({ where, orderBy, skip, take }),
+    prisma.employee.count({ where }),
+  ]);
+
+  return { rows, total };
 };
 
 // Insert a new employee row. The input arrives already validated and

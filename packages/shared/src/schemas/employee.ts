@@ -221,3 +221,71 @@ export const employeeSchema = z
   .strict();
 
 export type Employee = z.infer<typeof employeeSchema>;
+
+// ===========================================================================
+// List query schema
+// ===========================================================================
+//
+// Query parameters for GET /api/employees. Contract: docs/05-api-design.md
+// §5.1. Strings come in from the URL so numeric values are coerced via
+// z.coerce.*; defaults match the documented values; the object is strict
+// so a typo like ?contry=US returns 422 rather than silently returning
+// everything.
+
+// minSalary and maxSalary share the same shape but accept zero (unlike
+// salarySchema which requires strictly positive values for employee records).
+const SALARY_FILTER_MAX = 9_999_999_999.99;
+const salaryFilterSchema = z
+  .string()
+  .regex(/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/, {
+    message: 'Must be a non-negative decimal with at most two decimal places',
+  })
+  .refine((s) => Number(s) <= SALARY_FILTER_MAX, {
+    message: `Must not exceed ${SALARY_FILTER_MAX}`,
+  });
+
+// Closed whitelist of columns clients can sort by. Anything outside this set
+// is a 422 - the URL must never decide an arbitrary column name to ORDER BY
+// (docs/05-api-design.md §2.7, also tradeoff 5.6 on no-magic).
+export const sortableEmployeeColumnSchema = z.enum([
+  'fullName',
+  'salary',
+  'hireDate',
+  'createdAt',
+  'updatedAt',
+]);
+
+export type SortableEmployeeColumn = z.infer<typeof sortableEmployeeColumnSchema>;
+
+export const sortOrderSchema = z.enum(['asc', 'desc']);
+export type SortOrder = z.infer<typeof sortOrderSchema>;
+
+export const listEmployeesQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(1).max(200).default(50),
+    search: z.string().trim().min(1).max(100).optional(),
+    country: countrySchema.optional(),
+    jobTitle: z.string().trim().min(1).max(100).optional(),
+    department: departmentSchema.optional(),
+    employmentType: employmentTypeSchema.optional(),
+    minSalary: salaryFilterSchema.optional(),
+    maxSalary: salaryFilterSchema.optional(),
+    sortBy: sortableEmployeeColumnSchema.default('createdAt'),
+    sortOrder: sortOrderSchema.default('desc'),
+  })
+  .strict()
+  .refine(
+    (data) => {
+      if (data.minSalary !== undefined && data.maxSalary !== undefined) {
+        return Number(data.minSalary) <= Number(data.maxSalary);
+      }
+      return true;
+    },
+    {
+      message: 'minSalary must not be greater than maxSalary',
+      path: ['minSalary'],
+    },
+  );
+
+export type ListEmployeesQuery = z.infer<typeof listEmployeesQuerySchema>;

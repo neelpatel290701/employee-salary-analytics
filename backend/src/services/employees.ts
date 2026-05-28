@@ -1,9 +1,15 @@
-import type { CreateEmployeeInput, Employee, ISOCountryCode } from '@app/shared';
+import type {
+  CreateEmployeeInput,
+  Employee,
+  ISOCountryCode,
+  ListEmployeesQuery,
+} from '@app/shared';
 
 import { HttpError } from '../errors.js';
 import {
   EmployeeEmailConflictError,
   findEmployeeById,
+  findManyEmployees,
   insertEmployee,
   type EmployeeRow,
 } from '../repositories/employees.js';
@@ -38,6 +44,35 @@ export const getById = async (id: string): Promise<Employee> => {
     throw new HttpError(404, 'NOT_FOUND', 'Employee not found');
   }
   return serializeEmployee(row);
+};
+
+export type EmployeeListResult = {
+  data: Employee[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+export const list = async (
+  query: ListEmployeesQuery,
+): Promise<EmployeeListResult> => {
+  const { rows, total } = await findManyEmployees(query);
+
+  return {
+    data: rows.map(serializeEmployee),
+    pagination: {
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+      // ceil so a non-multiple total still consumes a final partial page.
+      // 0 rows yields 0 totalPages, matching the empty-list test in
+      // tests/integration/employees.list.test.ts.
+      totalPages: Math.ceil(total / query.pageSize),
+    },
+  };
 };
 
 // Convert a Prisma `Employee` row into the API contract shape from
