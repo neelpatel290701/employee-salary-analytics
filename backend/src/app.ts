@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { requestContext } from './middleware/requestContext.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
+import { employeesRouter } from './routes/employees.js';
 import { healthRouter } from './routes/health.js';
 
 // The Express app is exported as a value (not a side-effect of listening) so
@@ -35,6 +36,7 @@ export const createApp = () => {
 
   // Routes are mounted here. The set grows as TDD pairs add feature endpoints.
   app.use('/api/health', healthRouter);
+  app.use('/api/employees', employeesRouter);
 
   // Tail middleware: 404 for unmatched paths, then the single error handler.
   // Order matters - errorHandler must come last.

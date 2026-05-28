@@ -1,6 +1,8 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 
+import { HttpError } from '../errors.js';
+
 // The single source of HTTP error responses. Every error response in this API
 // has the shape defined in docs/05-api-design.md §3:
 //
@@ -9,18 +11,6 @@ import { ZodError } from 'zod';
 // Route handlers never write error responses by hand. They either throw an
 // HttpError (when they know exactly what went wrong) or let a thrown
 // ZodError propagate; this middleware does the translation.
-
-export class HttpError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly code: string,
-    message: string,
-    public readonly details?: unknown,
-  ) {
-    super(message);
-    this.name = 'HttpError';
-  }
-}
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof ZodError) {
