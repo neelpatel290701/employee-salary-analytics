@@ -1,0 +1,21 @@
+{
+  "name": "employee-salary-analytics",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Salary management tool for HR Managers of mid-to-large organisations. Take-home assessment.",
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  }
+}
