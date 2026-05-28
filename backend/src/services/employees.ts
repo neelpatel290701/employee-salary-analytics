@@ -3,14 +3,17 @@ import type {
   Employee,
   ISOCountryCode,
   ListEmployeesQuery,
+  UpdateEmployeeInput,
 } from '@app/shared';
 
 import { HttpError } from '../errors.js';
 import {
   EmployeeEmailConflictError,
+  EmployeeNotFoundError,
   findEmployeeById,
   findManyEmployees,
   insertEmployee,
+  updateEmployee,
   type EmployeeRow,
 } from '../repositories/employees.js';
 
@@ -44,6 +47,28 @@ export const getById = async (id: string): Promise<Employee> => {
     throw new HttpError(404, 'NOT_FOUND', 'Employee not found');
   }
   return serializeEmployee(row);
+};
+
+export const update = async (
+  id: string,
+  input: UpdateEmployeeInput,
+): Promise<Employee> => {
+  try {
+    const row = await updateEmployee(id, input);
+    return serializeEmployee(row);
+  } catch (err) {
+    if (err instanceof EmployeeNotFoundError) {
+      throw new HttpError(404, 'NOT_FOUND', 'Employee not found');
+    }
+    if (err instanceof EmployeeEmailConflictError) {
+      throw new HttpError(
+        409,
+        'CONFLICT',
+        'An employee with this email already exists',
+      );
+    }
+    throw err;
+  }
 };
 
 export type EmployeeListResult = {

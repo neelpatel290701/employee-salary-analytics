@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   createEmployeeInputSchema,
   listEmployeesQuerySchema,
+  updateEmployeeInputSchema,
 } from '@app/shared';
 
 import * as employeesService from '../services/employees.js';
@@ -51,6 +52,23 @@ employeesRouter.get('/:id', async (req, res, next) => {
   try {
     const employee = await employeesService.getById(req.params.id);
     res.json({ data: employee });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/employees/:id - partial update
+// Contract: docs/05-api-design.md §5.4. Body may be any non-empty subset
+// of the create fields with the same per-field validation; unknown fields
+// are rejected by strict mode; the email field, if present, is checked
+// for uniqueness against OTHER rows (self-conflict avoidance comes from
+// Prisma's update naturally - the row's existing value satisfies its
+// own unique constraint).
+employeesRouter.patch('/:id', async (req, res, next) => {
+  try {
+    const input = updateEmployeeInputSchema.parse(req.body);
+    const updated = await employeesService.update(req.params.id, input);
+    res.json({ data: updated });
   } catch (err) {
     next(err);
   }

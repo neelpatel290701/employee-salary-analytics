@@ -1,5 +1,9 @@
 import { Prisma, type Employee as EmployeeRow } from '@prisma/client';
-import type { CreateEmployeeInput, ListEmployeesQuery } from '@app/shared';
+import type {
+  CreateEmployeeInput,
+  ListEmployeesQuery,
+  UpdateEmployeeInput,
+} from '@app/shared';
 
 import { prisma } from '../db/prisma.js';
 
@@ -15,6 +19,13 @@ export class EmployeeEmailConflictError extends Error {
   constructor(public readonly email: string) {
     super(`An employee with email ${email} already exists`);
     this.name = 'EmployeeEmailConflictError';
+  }
+}
+
+export class EmployeeNotFoundError extends Error {
+  constructor(public readonly id: string) {
+    super(`No employee found with id ${id}`);
+    this.name = 'EmployeeNotFoundError';
   }
 }
 
@@ -92,6 +103,41 @@ export const findManyEmployees = async (
   ]);
 
   return { rows, total };
+};
+
+// Update an existing employee. The input arrives already validated and
+// normalised by updateEmployeeInputSchema in the route layer, with every
+// field optional and at least one present (the schema's refine guarantees
+// non-empty bodies). Self-conflict avoidance comes for free: when the
+// email field is sent back unchanged, Prisma's update does not fire P2002
+// because the row's existing value satisfies the unique constraint.
+export const updateEmployee = async (
+  id: string,
+  input: UpdateEmployeeInput,
+): Promise<EmployeeRow> => {
+  const data: Prisma.EmployeeUpdateInput = { ...input };
+  if (input.hireDate !== undefined) {
+    data.hireDate = new Date(`${input.hireDate}T00:00:00Z`);
+  }
+
+  try {
+    return await prisma.employee.update({ where: { id }, data });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === 'P2025') {
+        // P2025: "An operation failed because it depends on one or more
+        // records that were required but not found." The :id segment did
+        // not resolve to a row.
+        throw new EmployeeNotFoundError(id);
+      }
+      if (err.code === 'P2002') {
+        // P2002: unique constraint violation. Only email is unique on
+        // employees (docs/04-data-model.md §3), so we can map directly.
+        throw new EmployeeEmailConflictError(input.email ?? '');
+      }
+    }
+    throw err;
+  }
 };
 
 // Insert a new employee row. The input arrives already validated and
