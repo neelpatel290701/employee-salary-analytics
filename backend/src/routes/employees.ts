@@ -73,3 +73,15 @@ employeesRouter.patch('/:id', async (req, res, next) => {
     next(err);
   }
 });
+
+// DELETE /api/employees/:id - hard delete
+// Contract: docs/05-api-design.md §5.5. 204 No Content on success (no
+// body), 404 NOT_FOUND on miss with the standard error envelope.
+employeesRouter.delete('/:id', async (req, res, next) => {
+  try {
+    await employeesService.remove(req.params.id);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});

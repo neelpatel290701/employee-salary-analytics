@@ -8,6 +8,7 @@ import type {
 
 import { HttpError } from '../errors.js';
 import {
+  deleteEmployee,
   EmployeeEmailConflictError,
   EmployeeNotFoundError,
   findEmployeeById,
@@ -66,6 +67,20 @@ export const update = async (
         'CONFLICT',
         'An employee with this email already exists',
       );
+    }
+    throw err;
+  }
+};
+
+// `remove`, not `delete`, because `delete` is a reserved word in strict-
+// mode JavaScript and cannot be used as an exported binding name. Same
+// shape as `update`: domain not-found translates to HttpError 404.
+export const remove = async (id: string): Promise<void> => {
+  try {
+    await deleteEmployee(id);
+  } catch (err) {
+    if (err instanceof EmployeeNotFoundError) {
+      throw new HttpError(404, 'NOT_FOUND', 'Employee not found');
     }
     throw err;
   }

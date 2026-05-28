@@ -105,6 +105,24 @@ export const findManyEmployees = async (
   return { rows, total };
 };
 
+// Delete an employee by id. Hard delete per assumption A5 - the row is
+// gone after this returns, with no soft-deleted record left behind. P2025
+// means the row did not exist to begin with, which the service translates
+// into a 404.
+export const deleteEmployee = async (id: string): Promise<void> => {
+  try {
+    await prisma.employee.delete({ where: { id } });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2025'
+    ) {
+      throw new EmployeeNotFoundError(id);
+    }
+    throw err;
+  }
+};
+
 // Update an existing employee. The input arrives already validated and
 // normalised by updateEmployeeInputSchema in the route layer, with every
 // field optional and at least one present (the schema's refine guarantees
