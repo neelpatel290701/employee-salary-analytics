@@ -3,9 +3,13 @@
 // parse. Each variable uses `??=` so a developer can override any of them
 // (e.g. to point integration tests at a different DATABASE_URL) without
 // editing this file.
+//
+// PORT is deliberately omitted - Supertest mounts the Express app directly
+// without binding to a port, so the value is irrelevant in tests. Letting
+// config.ts apply its default (3000) keeps the parsing path consistent with
+// production.
 
 process.env.NODE_ENV ??= 'test';
-process.env.PORT ??= '0';
 process.env.DATABASE_URL ??=
   'mysql://app:app@localhost:3306/employee_analytics_test';
 process.env.ALLOWED_ORIGINS ??= 'http://localhost:5173';
