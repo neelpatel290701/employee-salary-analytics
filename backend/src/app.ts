@@ -8,6 +8,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 import { employeesRouter } from './routes/employees.js';
 import { healthRouter } from './routes/health.js';
+import { insightsRouter } from './routes/insights.js';
 
 // The Express app is exported as a value (not a side-effect of listening) so
 // integration tests can mount it on a Supertest agent without binding a port.
@@ -37,6 +38,7 @@ export const createApp = () => {
   // Routes are mounted here. The set grows as TDD pairs add feature endpoints.
   app.use('/api/health', healthRouter);
   app.use('/api/employees', employeesRouter);
+  app.use('/api/insights', insightsRouter);
 
   // Tail middleware: 404 for unmatched paths, then the single error handler.
   // Order matters - errorHandler must come last.

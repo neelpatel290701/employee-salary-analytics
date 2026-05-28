@@ -289,3 +289,44 @@ export const listEmployeesQuerySchema = z
   );
 
 export type ListEmployeesQuery = z.infer<typeof listEmployeesQuerySchema>;
+
+// ===========================================================================
+// Insights: country-stats schemas
+// ===========================================================================
+//
+// Query and response shapes for GET /api/insights/country-stats. Contract:
+// docs/05-api-design.md §6.2.
+
+export const countryStatsSortBySchema = z.enum([
+  'count',
+  'averageSalary',
+  'medianSalary',
+]);
+
+export type CountryStatsSortBy = z.infer<typeof countryStatsSortBySchema>;
+
+export const countryStatsQuerySchema = z
+  .object({
+    country: countrySchema.optional(),
+    sortBy: countryStatsSortBySchema.default('count'),
+    sortOrder: sortOrderSchema.default('desc'),
+  })
+  .strict();
+
+export type CountryStatsQuery = z.infer<typeof countryStatsQuerySchema>;
+
+// One row of the country-stats response. Every monetary field is a string
+// with two decimal places (same DECIMAL-as-string convention used by the
+// Employee response shape). count is a number because it is a sample size,
+// not a money amount.
+export type CountryStats = {
+  country: string;
+  count: number;
+  minSalary: string;
+  maxSalary: string;
+  averageSalary: string;
+  medianSalary: string;
+  p25Salary: string;
+  p75Salary: string;
+  totalPayrollUsd: string;
+};
