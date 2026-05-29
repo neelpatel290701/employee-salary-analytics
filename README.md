@@ -1,3 +1,5 @@
+# WEB URL : https://employee-salary-analytics-frontend.vercel.app
+
 # Employee Salary Analytics
 
 A minimal, production-quality salary management tool for HR Managers of mid-to-large organizations (10,000+ employees). Built as a take-home assessment.
