@@ -99,7 +99,16 @@ export const generateOne = (
     rng() < 0.8 ? 'FULL_TIME' : pick(NON_FULL_TIME_TYPES, rng);
 
   const base = SALARY_BASE_BY_COUNTRY[country] ?? 50000;
-  const multiplier = 0.5 + rng() * 2;
+  // 5% of employees get an outlier-class salary (multiplier 3.5-6.0
+  // instead of 0.5-2.5). Without this, no synthetic employee is ever
+  // more than ~1.7σ from their (country, jobTitle) cohort mean and the
+  // /api/insights/outliers endpoint returns an empty list - the seed
+  // would not exercise the feature it is meant to demo. The boost rate
+  // is small enough that it does not skew the per-country summary
+  // statistics noticeably; 95% of rows still follow the normal
+  // distribution above.
+  const isOutlier = rng() < 0.05;
+  const multiplier = isOutlier ? 3.5 + rng() * 2.5 : 0.5 + rng() * 2;
   const salaryNum = Math.round(base * multiplier * 100) / 100;
 
   const daysAgo = Math.floor(rng() * TEN_YEARS_DAYS);
