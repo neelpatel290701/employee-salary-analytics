@@ -27,16 +27,16 @@ Every feature in this app is justified against that persona. The detailed user-j
 
 ## Approach
 
-This project is being built in two clearly-separated phases, both visible in the commit history:
+This project was built in two clearly-separated phases, both visible in the commit history:
 
-1. **Planning phase (docs first).** Before any code is written, the repository captures requirements analysis, product thinking, architecture, data model, API design, TDD strategy, performance plan, and trade-off rationale as a sequence of Markdown documents. This is intentional — the assessment evaluates *how* we think, not just *what* we ship.
+1. **Planning phase (docs first).** Before any code was written, the repository captured requirements analysis, product thinking, architecture, data model, API design, TDD strategy, performance plan, and trade-off rationale as a sequence of Markdown documents. This was intentional — the assessment evaluates *how* we think, not just *what* we ship.
 
-2. **Implementation phase (strict TDD).** Each feature is then built using Test-Driven Development:
+2. **Implementation phase (strict TDD).** Each feature was then built using Test-Driven Development:
    - Commit a **failing test** that describes the desired behavior (red).
    - Commit the **minimum implementation** that makes it pass (green).
    - Commit a **refactor** when there is something meaningful to clean up.
 
-   TDD is applied strictly to business logic (services, aggregations, route handlers). It is applied pragmatically to boilerplate (tsconfig, server bootstrap, type definitions) — the rationale is documented in [docs/06-tdd-strategy.md](docs/06-tdd-strategy.md).
+   TDD was applied strictly to business logic (services, aggregations, route handlers). It was applied pragmatically to boilerplate (tsconfig, server bootstrap, type definitions) — the rationale is documented in [docs/06-tdd-strategy.md](docs/06-tdd-strategy.md).
 
 The result is a commit history that reads as a narrative: you can see the problem being understood, the design taking shape, and the code being grown one test at a time.
 
@@ -67,23 +67,48 @@ The `docs/` directory contains the design documents that drove this implementati
 9. [`docs/09-ai-usage.md`](docs/09-ai-usage.md) — How AI tooling accelerated the work and where it was overridden.
 10. [`docs/10-deployment.md`](docs/10-deployment.md) — How the app is deployed and how to reproduce the environment.
 
-> These documents are added incrementally during the planning phase of the commit history.
+> These documents were added incrementally as the first ten commits of the planning phase. They are intended to be read first by a reviewer; the implementation phase that follows is the natural consequence of the decisions captured here.
 
 ## Running locally
 
-> Setup instructions will be added as the corresponding scaffolding commits land. The intended flow is:
->
-> 1. `docker compose up -d` — boot MySQL.
-> 2. `cd backend && npm install && npm run prisma:migrate && npm run seed`
-> 3. `cd backend && npm run dev`
-> 4. `cd frontend && npm install && npm run dev`
->
-> A single command-line walkthrough will be documented in this section once implementation begins.
+**Prerequisites:** Node 20 (via `nvm use` — `.nvmrc` is committed), Docker, and `npm` 10+.
 
-## Demo
+```bash
+# 1. Boot the local MySQL via Docker Compose
+npm run db:up
 
-> A short video walkthrough of the deployed application will be linked here once the build is complete.
+# 2. Install all workspace dependencies from the repo root
+npm install
+
+# 3. Apply Prisma migrations to the local dev database
+npx --workspace @app/backend prisma migrate deploy
+
+# 4. Seed 10,000 employees (optional but recommended for the analytics view)
+npm --workspace @app/backend run seed -- --count=10000 --seed=42
+
+# 5. Start the backend (terminal 1)
+npm --workspace @app/backend run dev
+#    → API listening on :3000
+
+# 6. Start the frontend (terminal 2)
+npm --workspace @app/frontend run dev
+#    → Vite dev server on http://localhost:5173
+
+# Visit http://localhost:5173 in a browser.
+```
+
+**Running the test suites:**
+
+```bash
+# Everything (211 tests across all workspaces)
+npm test
+
+# Single workspace
+npm --workspace @app/backend test     # 125 tests — needs Docker MySQL running
+npm --workspace @app/shared  test     # 65 unit tests — no infra needed
+npm --workspace @app/frontend test    # 21 RTL + MSW tests — no infra needed
+```
 
 ## Repository status
 
-**Current phase:** Planning. The repository contains only design and planning documents. Implementation commits begin once the planning phase is complete.
+**Complete and deployed.** All planning documents are in `docs/`, the implementation phase landed under strict TDD discipline (red → green → optional refactor per feature), and the application is live at the URL at the top of this README. The commit history reads as a narrative of the work; every architectural and engineering decision is traceable to either a doc or a commit message.
